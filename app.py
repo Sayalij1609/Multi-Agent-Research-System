@@ -4,13 +4,29 @@ import os
 import io
 import re
 from datetime import datetime
-from flask import Flask, render_template, request, Response, jsonify, send_file
+
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+
 from pipeline import run_research_pipeline_stream
 from fpdf import FPDF
 
-app = Flask(__name__)
+# ── App setup ────────────────────────────────────────────────
+
+app = FastAPI(title="SYNAPSE", description="AI Research Assistant")
+templates = Jinja2Templates(directory="templates")
 
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "research_history.json")
+
+
+# ── Pydantic models ─────────────────────────────────────────
+
+class PDFRequest(BaseModel):
+    report: str
+    topic: str = "Research Report"
 
 
 # ── History helpers ──────────────────────────────────────────
@@ -69,7 +85,6 @@ class ResearchPDF(FPDF):
 
 def _sanitize(text):
     """Remove characters unsupported by the built-in Helvetica font."""
-    # Replace common Unicode with ASCII equivalents
     replacements = {
         '\u2013': '-', '\u2014': '--', '\u2018': "'", '\u2019': "'",
         '\u201c': '"', '\u201d': '"', '\u2026': '...', '\u2022': '-',
@@ -80,7 +95,6 @@ def _sanitize(text):
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
-    # Strip remaining non-latin1 characters
     return text.encode('latin-1', errors='replace').decode('latin-1')
 
 
@@ -109,16 +123,13 @@ def markdown_to_pdf(report_text, topic="Research Report"):
     pdf.ln(6)
 
     # Parse and render markdown lines
-    lines = report_text.split("\n")
-
-    for line in lines:
+    for line in report_text.split("\n"):
         stripped = line.strip()
 
         if not stripped:
             pdf.ln(3)
             continue
 
-        # Headings
         if stripped.startswith("### "):
             pdf.ln(4)
             pdf.set_font("Helvetica", "B", 12)
@@ -140,17 +151,15 @@ def markdown_to_pdf(report_text, topic="Research Report"):
             pdf.multi_cell(0, 9, _sanitize(stripped[2:]))
             pdf.ln(3)
 
-        # Bullet points
         elif stripped.startswith("- ") or stripped.startswith("* "):
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(60, 60, 60)
             text = re.sub(r'\*\*(.*?)\*\*', r'\1', stripped[2:])
             text = re.sub(r'\*(.*?)\*', r'\1', text)
-            pdf.cell(6)  # indent
+            pdf.cell(6)
             pdf.multi_cell(0, 6, "  - " + _sanitize(text))
             pdf.ln(1)
 
-        # Numbered lists
         elif re.match(r'^\d+\.\s', stripped):
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(60, 60, 60)
@@ -160,13 +169,12 @@ def markdown_to_pdf(report_text, topic="Research Report"):
             pdf.multi_cell(0, 6, _sanitize(text))
             pdf.ln(1)
 
-        # Normal paragraph
         else:
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(60, 60, 60)
             text = re.sub(r'\*\*(.*?)\*\*', r'\1', stripped)
             text = re.sub(r'\*(.*?)\*', r'\1', text)
-            text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # links
+            text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
             pdf.multi_cell(0, 6, _sanitize(text))
             pdf.ln(1)
 
@@ -175,24 +183,22 @@ def markdown_to_pdf(report_text, topic="Research Report"):
 
 # ── Routes ───────────────────────────────────────────────────
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse(request, "index.html")
 
 
-@app.route("/run")
-def run_pipeline():
+@app.get("/run")
+async def run_pipeline(topic: str = ""):
     """SSE endpoint — streams pipeline step events as JSON."""
-    topic = request.args.get("topic", "").strip()
+    topic = topic.strip()
 
     if not topic:
-        return Response('data: {"error": "No topic provided"}\n\n',
-                        content_type="text/event-stream")
+        return JSONResponse({"error": "No topic provided"})
 
     def generate():
         try:
             for event in run_research_pipeline_stream(topic):
-                # When pipeline completes, save to history
                 if event.get("step") == "complete" and "state" in event:
                     entry_id = add_to_history(topic, event["state"])
                     event["history_id"] = entry_id
@@ -201,9 +207,9 @@ def run_pipeline():
         except Exception as e:
             yield f'data: {json.dumps({"error": str(e)})}\n\n'
 
-    return Response(
+    return StreamingResponse(
         generate(),
-        content_type="text/event-stream",
+        media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
@@ -211,64 +217,55 @@ def run_pipeline():
     )
 
 
-@app.route("/download-pdf", methods=["POST"])
-def download_pdf():
+@app.post("/download-pdf")
+async def download_pdf(data: PDFRequest):
     """Generate and return a PDF from the report text."""
-    data = request.get_json()
-    report = data.get("report", "")
-    topic = data.get("topic", "Research Report")
+    if not data.report:
+        return JSONResponse({"error": "No report provided"}, status_code=400)
 
-    if not report:
-        return jsonify({"error": "No report provided"}), 400
-
-    pdf_bytes = markdown_to_pdf(report, topic)
+    pdf_bytes = markdown_to_pdf(data.report, data.topic)
     buffer = io.BytesIO(pdf_bytes)
     buffer.seek(0)
 
-    safe_name = re.sub(r'[^\w\s-]', '', topic)[:50].strip().replace(' ', '_')
+    safe_name = re.sub(r'[^\w\s-]', '', data.topic)[:50].strip().replace(' ', '_')
     filename = f"synapse_{safe_name}.pdf"
 
-    return send_file(
-        buffer,
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=filename,
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
-@app.route("/history")
-def get_history():
+@app.get("/history")
+async def get_history():
     """Return list of past research (summary only)."""
     history = load_history()
-    summaries = [
-        {
-            "id": h["id"],
-            "topic": h["topic"],
-            "timestamp": h["timestamp"],
-        }
+    return [
+        {"id": h["id"], "topic": h["topic"], "timestamp": h["timestamp"]}
         for h in history
     ]
-    return jsonify(summaries)
 
 
-@app.route("/history/<entry_id>")
-def get_history_entry(entry_id):
+@app.get("/history/{entry_id}")
+async def get_history_entry(entry_id: str):
     """Return full details of a specific research entry."""
     history = load_history()
     for h in history:
         if h["id"] == entry_id:
-            return jsonify(h)
-    return jsonify({"error": "Not found"}), 404
+            return h
+    return JSONResponse({"error": "Not found"}, status_code=404)
 
 
-@app.route("/history/<entry_id>", methods=["DELETE"])
-def delete_history_entry(entry_id):
+@app.delete("/history/{entry_id}")
+async def delete_history_entry(entry_id: str):
     """Delete a specific research entry."""
     history = load_history()
     history = [h for h in history if h["id"] != entry_id]
     save_history(history)
-    return jsonify({"ok": True})
+    return {"ok": True}
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000, threaded=True)
+    import uvicorn
+    uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)
