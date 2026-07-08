@@ -9,6 +9,14 @@ from agents import (
 from rich import print
 
 
+def _get_response(result):
+    """Extract text from agent response (handles both tuple and object formats)."""
+    msg = result["messages"][-1]
+    if isinstance(msg, tuple):
+        return msg[1]
+    return msg.content if hasattr(msg, 'content') else str(msg)
+
+
 def run_research_pipeline(topic: str):
 
     state = {}
@@ -34,7 +42,7 @@ def run_research_pipeline(topic: str):
         }
     )
 
-    state["search_results"] = search_result["messages"][-1].content
+    state["search_results"] = _get_response(search_result)
 
     print(state["search_results"])
 
@@ -69,7 +77,7 @@ Search Result:
 
     )
 
-    state["scraped_content"] = reader_result["messages"][-1].content
+    state["scraped_content"] = _get_response(reader_result)
 
     print(state["scraped_content"])
 
@@ -122,13 +130,13 @@ SCRAPED CONTENT
 
 
 # -----------------------------------------------
-# Streaming version for Flask SSE
+# Streaming version for FastAPI SSE
 # -----------------------------------------------
 
 def run_research_pipeline_stream(topic: str):
     """
     Generator that yields dicts for each pipeline step.
-    Used by the Flask SSE endpoint for real-time updates.
+    Used by the FastAPI SSE endpoint for real-time updates.
     """
 
     state = {}
@@ -149,7 +157,7 @@ def run_research_pipeline_stream(topic: str):
         }
     )
 
-    state["search_results"] = search_result["messages"][-1].content
+    state["search_results"] = _get_response(search_result)
     yield {"step": "search", "status": "done", "result": state["search_results"]}
 
     # Step 2: Reader Agent
@@ -170,7 +178,7 @@ def run_research_pipeline_stream(topic: str):
         }
     )
 
-    state["scraped_content"] = reader_result["messages"][-1].content
+    state["scraped_content"] = _get_response(reader_result)
     yield {"step": "reader", "status": "done", "result": state["scraped_content"]}
 
     # Step 3: Writer Chain
