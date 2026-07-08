@@ -1,36 +1,78 @@
-from langchain.agents import create_agent
-from langchain_ollama import ChatOllama
+from dotenv import load_dotenv
+
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 from tools import web_search, scrape_url
 
 # -----------------------------
-# Local LLM Setup (Ollama)
+# Load Environment Variables
 # -----------------------------
-llm = ChatOllama(
-    model="llama3.2",
+load_dotenv()
+
+# -----------------------------
+# Groq LLM Setup
+# -----------------------------
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
     temperature=0,
-    num_ctx=8192
 )
 
 # -----------------------------
-# Search Agent
+# Search Agent (manual tool call)
 # -----------------------------
 def build_search_agent():
-    return create_agent(
-        model=llm,
-        tools=[web_search]
-    )
+    """Returns a callable that searches the web using DuckDuckGo."""
+    class SearchAgent:
+        def invoke(self, input_dict):
+            messages = input_dict.get("messages", [])
+            user_msg = messages[-1][1] if messages else ""
+
+            # Extract the query from the user message
+            search_prompt = ChatPromptTemplate.from_messages([
+                ("system", "Extract the core search query from the user's request. "
+                           "Reply with ONLY the search query, nothing else."),
+                ("human", "{request}")
+            ])
+            chain = search_prompt | llm | StrOutputParser()
+            query = chain.invoke({"request": user_msg}).strip()
+
+            # Call the tool directly
+            results = web_search.invoke(query)
+
+            return {"messages": [("assistant", results)]}
+
+    return SearchAgent()
 
 # -----------------------------
-# Reader Agent
+# Reader Agent (manual tool call)
 # -----------------------------
 def build_reader_agent():
-    return create_agent(
-        model=llm,
-        tools=[scrape_url]
-    )
+    """Returns a callable that scrapes a URL from search results."""
+    class ReaderAgent:
+        def invoke(self, input_dict):
+            messages = input_dict.get("messages", [])
+            user_msg = messages[-1][1] if messages else ""
+
+            # Extract the best URL from the search results
+            url_prompt = ChatPromptTemplate.from_messages([
+                ("system", "From the search results below, pick the single most "
+                           "relevant and informative URL. Reply with ONLY the URL, nothing else."),
+                ("human", "{text}")
+            ])
+            chain = url_prompt | llm | StrOutputParser()
+            url = chain.invoke({"text": user_msg}).strip()
+
+            # Call the tool directly
+            content = scrape_url.invoke(url)
+
+            # Summarize what was scraped
+            summary = f"Scraped content from {url}:\n\n{content}"
+
+            return {"messages": [("assistant", summary)]}
+
+    return ReaderAgent()
 
 # -----------------------------
 # Writer Chain
