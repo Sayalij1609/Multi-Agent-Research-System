@@ -1,36 +1,59 @@
-# 🧠 SYNAPSE — Multi-Agent AI Research System
+# ⚡ SYNAPSE AI — Autonomous Multi-Agent Research System
 
-A multi-agent AI research system that automates the entire research workflow. Four specialized AI agents collaborate in sequence — **searching** the web, **extracting** content, **writing** a structured report, and **reviewing** it for quality — all running locally via [Ollama](https://ollama.com).
+An enterprise-grade, multi-agent AI research intelligence platform that automates complex web research workflows. Four specialized AI agents collaborate in real-time — **searching** live web intelligence, **extracting & scraping** content, **synthesizing** structured executive reports, and **auditing** quality — producing downloadable **Word (.docx)**, **PDF**, and **Markdown** reports with verified sources.
 
-![Python](https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask)
-![LangChain](https://img.shields.io/badge/LangChain-0.3-1c3c3c)
-![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-white)
-
----
-
-## ✨ Features
-
-- **4 Specialized Agents** — each handles one step of the research pipeline
-- **100% Local** — runs on your machine using Ollama (no API keys needed)
-- **Beautiful Web UI** — glassmorphism design with light/dark mode
-- **Real-Time Progress** — Server-Sent Events stream each agent's status live
-- **Markdown Reports** — download the final report as `.md`
-- **Quality Scoring** — the Critic agent rates the report and gives feedback
+![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-0.3-1C3C3C?logo=langchain)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ---
 
-## 🏗️ Architecture
+## ✨ Key Features & Capabilities
 
-![Architecture Diagram](assets/architecture.png)
+- 🤖 **4 Specialized Autonomous AI Agents**:
+  - 🔍 **Search Agent**: Queries live web search via DuckDuckGo & extracts source URLs.
+  - 📄 **Reader Agent**: Scrapes web content and strips noise for deep analysis.
+  - ✍️ **Writer Agent**: Synthesizes executive research reports with structured sections.
+  - ⭐ **Critic Agent**: Audits report quality, scores factual completeness (X/10), and details key strengths.
+- 📄 **Multi-Format Export Suite**:
+  - 📘 **Microsoft Word (`.docx`)**: Custom styled Word documents with proper headings, lists, and formatting (`python-docx`).
+  - 📕 **PDF Document (`.pdf`)**: Formatted PDF reports generated dynamically (`fpdf2`).
+  - 📝 **Raw Markdown (`.md`)**: Instant download for note-taking tools like Obsidian or Notion.
+  - 📋 **1-Click Clipboard Copy**: Instantly copy full synthesized reports.
+- 🌐 **Discovered Web News & Resources Container**:
+  - Interactive grid displaying domain badges, Google favicons, article snippets, 1-click URL copy, and direct external links.
+- 🔬 **Multi-Tab Intelligence Hub**:
+  - Structured output tabs: `📝 Executive Report`, `🌐 Web News & Sources`, `⭐ Quality Audit Review`, and `🛠️ Agent Telemetry`.
+- 📜 **History Archive Modal**:
+  - Integrated search-filterable archive to reload or manage past research sessions anytime.
+- 🎨 **Enterprise UI Design**:
+  - High-contrast Deep Indigo Plum (`#2B2554`) & Rose Pink (`#EF526E`) palette on a crisp **pure white background** at true **100% resolution scale**.
 
-| Agent | Role | Tool |
-|-------|------|------|
-| **Search Agent** | Searches the web for relevant sources | DuckDuckGo (via `ddgs`) |
-| **Reader Agent** | Scrapes and extracts content from top URLs | BeautifulSoup |
-| **Writer** | Generates a structured research report | LLM Chain |
-| **Critic** | Reviews the report and provides a score | LLM Chain |
+---
 
+## 🏗️ System Architecture
+
+```
+                                  ┌───────────────────────────┐
+                                  │      SYNAPSE AI UI        │
+                                  │  (React 19 + Vite SPA)    │
+                                  └─────────────┬─────────────┘
+                                                │ REST API
+                                                ▼
+                                  ┌───────────────────────────┐
+                                  │     FastAPI Backend       │
+                                  │       (app.py)            │
+                                  └─────────────┬─────────────┘
+                                                │
+                                                ▼
+┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+│   Search Agent   │ ──►│   Reader Agent   │ ──►│   Writer Agent   │ ──►│   Critic Agent   │
+│ (Live Web Search)│    │(Scrape & Extract)│    │(Report Synthesis)│    │ (Quality Audit)  │
+└──────────────────┘    └──────────────────┘    └──────────────────┘    └──────────────────┘
+```
 
 ---
 
@@ -38,13 +61,30 @@ A multi-agent AI research system that automates the entire research workflow. Fo
 
 ```
 Multi Agent AI Research System/
-├── app.py              # Flask web server (SSE streaming)
-├── pipeline.py         # Research pipeline (CLI + streaming generator)
-├── agents.py           # Agent & chain definitions (LLM, prompts)
-├── tools.py            # LangChain tools (web_search, scrape_url)
-├── requirements.txt    # Python dependencies
-└── templates/
-    └── index.html      # Web UI (HTML/CSS/JS)
+├── app.py                     # FastAPI backend (Endpoints: /run, /history, /download-pdf, /download-docx)
+├── agents.py                  # Agent prompts, chains, & LLM execution engine
+├── pipeline.py                # Synchronous & SSE streaming multi-agent execution pipeline
+├── tools.py                   # Search & scraping tools (DuckDuckGo, BeautifulSoup)
+├── requirements.txt           # Python dependencies
+├── README.md                  # Project documentation
+└── frontend/                  # React + Vite Single Page Application
+    ├── index.html             # HTML entry point
+    ├── vite.config.js         # Vite proxy configuration
+    ├── package.json           # Frontend dependencies
+    └── src/
+        ├── App.jsx            # Main React state & view router
+        ├── App.css            # Global modern design system & HSL tokens
+        ├── api.js             # Frontend API client
+        └── components/
+            ├── Topbar.jsx         # Executive navbar with high-res brand badge & navigation
+            ├── Home.jsx           # Enterprise landing page & quick-launch cards
+            ├── Hero.jsx           # Lab search command panel
+            ├── Pipeline.jsx       # Connected multi-agent execution track
+            ├── Metrics.jsx        # Telemetry metrics bar
+            ├── Results.jsx        # Multi-tab intelligence hub & export suite
+            ├── NewsResources.jsx  # Web news & resources grid container
+            ├── HistoryModal.jsx   # Research history modal popup
+            └── Footer.jsx         # Enterprise tech footer
 ```
 
 ---
@@ -53,190 +93,109 @@ Multi Agent AI Research System/
 
 ### Prerequisites
 
-- **Python 3.10+**
-- **Ollama** installed and running — [Download Ollama](https://ollama.com/download)
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/yourusername/multi-agent-ai-research-system.git
-cd multi-agent-ai-research-system
-```
-
-### 2. Create a virtual environment
-
-```bash
-python -m venv .venv
-```
-
-Activate it:
-
-- **Windows:** `.venv\Scripts\activate`
-- **macOS/Linux:** `source .venv/bin/activate`
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Pull the LLM model
-
-```bash
-ollama pull llama3.2
-```
-
-> You can use any Ollama model. To change it, edit the `model` parameter in `agents.py`.
-
-### 5. Run the app
-
-```bash
-python app.py
-```
-
-Open **http://localhost:5000** in your browser.
+- **Python 3.10+** installed on your system.
+- **Node.js 18+** & `npm` installed.
+- *(Optional)* **Ollama** installed locally if running offline models (`llama3.2`).
 
 ---
 
-## 🖥️ Usage
+### 1. Backend Setup
 
-1. Enter a research topic in the input field (e.g., *"Recent breakthroughs in solid-state batteries"*)
-2. Click **Start Research**
-3. Watch the 4 agents execute in real time:
-   - 🔍 **Search Agent** — finds relevant web sources
-   - 📄 **Reader Agent** — extracts content from the best URL
-   - ✍️ **Writer** — drafts a structured report with Introduction, Key Findings, Conclusion, and Sources
-   - ⭐ **Critic** — scores the report (X/10) with strengths and areas to improve
-4. View the final report rendered as formatted Markdown
-5. Click **↓ Download Markdown** to save the report
-
----
-
-## ⚙️ Configuration
-
-### Change the LLM model
-
-In [`agents.py`](agents.py), modify the `ChatOllama` initialization:
-
-```python
-llm = ChatOllama(
-    model="llama3.2",      # Change to any Ollama model
-    temperature=0,
-    num_ctx=8192
-)
-```
-
-Popular options: `mistral`, `llama3.2`, `gemma2`, `qwen2.5`
-
-### Change the Flask port
-
-In [`app.py`](app.py), modify the last line:
-
-```python
-app.run(debug=True, port=5000, threaded=True)
-```
-
----
-
-## 💎 Paid Alternatives (Optional)
-
-By default, SYNAPSE runs **100% free and locally**. However, you can swap in paid APIs for faster and more accurate results.
-
-### Use OpenAI instead of Ollama
-
-1. Install the OpenAI LangChain package:
-
+1. **Clone the repository**:
    ```bash
-   pip install langchain-openai
+   git clone https://github.com/Sayalij1609/Multi-Agent-Research-System.git
+   cd "Multi Agent AI Research System"
    ```
 
-2. Create a `.env` file in the project root:
+2. **Create and activate a Python virtual environment**:
+   - **Windows**:
+     ```powershell
+     python -m venv .venv
+     .venv\Scripts\activate
+     ```
+   - **macOS / Linux**:
+     ```bash
+     python3 -m venv .venv
+     source .venv/bin/activate
+     ```
 
-   ```
-   OPENAI_API_KEY=sk-your-key-here
-   ```
-
-3. In [`agents.py`](agents.py), replace the LLM initialization:
-
-   ```python
-   # Before (local)
-   from langchain_ollama import ChatOllama
-   llm = ChatOllama(model="llama3.2", temperature=0, num_ctx=8192)
-
-   # After (OpenAI)
-   from langchain_openai import ChatOpenAI
-   llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-   ```
-
-   Supported models: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
-
-### Use Tavily instead of DuckDuckGo
-
-[Tavily](https://tavily.com) provides an AI-optimized search API designed for LLM agents. It returns cleaner, more relevant results.
-
-1. Install the Tavily package:
-
+3. **Install Python dependencies**:
    ```bash
-   pip install tavily-python langchain-community
+   pip install -r requirements.txt
    ```
 
-2. Add your API key to `.env`:
-
+4. **Start the FastAPI backend server**:
+   ```bash
+   uvicorn app:app --host 127.0.0.1 --port 5000 --reload
    ```
-   TAVILY_API_KEY=tvly-your-key-here
-   ```
-
-3. In [`tools.py`](tools.py), replace the search tool:
-
-   ```python
-   # Before (free)
-   from ddgs import DDGS
-
-   @tool
-   def web_search(query: str) -> str:
-       results = DDGS().text(query, max_results=5)
-       ...
-
-   # After (Tavily)
-   from langchain_community.tools.tavily_search import TavilySearchResults
-
-   web_search = TavilySearchResults(max_results=5)
-   ```
-
-### Comparison
-
-| Feature | Free (Default) | Paid |
-|---------|---------------|------|
-| **LLM** | Ollama (local, unlimited) | OpenAI (fast, high quality) |
-| **Search** | DuckDuckGo (free, no key) | Tavily (cleaner, AI-optimized) |
-| **Privacy** | 100% on-device | Data sent to APIs |
-| **Speed** | Depends on hardware | Very fast |
-| **Cost** | $0 | ~$0.01–$0.10 per query |
-
-> **Note:** You can mix and match — e.g., use OpenAI for the LLM but keep DuckDuckGo for search, or vice versa.
+   The backend API will be available at `http://127.0.0.1:5000`.
 
 ---
 
-## 🛠️ Tech Stack
+### 2. Frontend Setup
+
+1. **Navigate to the `frontend` directory**:
+   ```bash
+   cd frontend
+   ```
+
+2. **Install Node.js dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Start the Vite development server**:
+   ```bash
+   npm run dev
+   ```
+
+4. Open your browser at **`http://localhost:5173`** to access the application.
+
+---
+
+## 💻 Building for Production
+
+To create a production build of the React frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+This generates an optimized static bundle in `frontend/dist/`.
+
+---
+
+## ⚙️ Configuration & Options
+
+### Switching LLM Providers
+
+In [`agents.py`](agents.py), you can configure the underlying LLM engine:
+
+- **Local Ollama** (Free & 100% On-Device):
+  ```python
+  from langchain_ollama import ChatOllama
+  llm = ChatOllama(model="llama3.2", temperature=0)
+  ```
+
+- **Groq API / OpenAI / Anthropic**:
+  Set your API key in environment variables or `.env` and initialize the corresponding LangChain LLM class.
+
+---
+
+## 🛠️ Technology Stack
 
 | Component | Technology |
-|-----------|-----------|
-| **LLM** | Ollama (local) |
-| **Agent Framework** | LangChain |
+|---|---|
+| **Frontend** | React 19, Vite, Vanilla CSS3 (Custom Tokens) |
+| **Backend** | FastAPI, Uvicorn, Pydantic |
+| **Agent Pipeline** | LangChain, LangGraph |
 | **Web Search** | DuckDuckGo (`ddgs`) |
-| **Web Scraping** | BeautifulSoup + Requests |
-| **Backend** | Flask |
-| **Frontend** | Vanilla HTML/CSS/JS |
-| **Streaming** | Server-Sent Events (SSE) |
+| **Web Scraping** | BeautifulSoup4, Requests |
+| **Document Export** | `python-docx` (Word), `fpdf2` (PDF) |
 
 ---
 
 ## 📝 License
 
-This project is open source and available under the [MIT License](LICENSE).
-
----
-
-<p align="center">
-  Built with ❤️ using LangChain, Ollama & Flask
-</p>
+This project is licensed under the [MIT License](LICENSE).
