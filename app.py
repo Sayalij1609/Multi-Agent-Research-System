@@ -8,16 +8,26 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from pipeline import run_research_pipeline_stream
 from fpdf import FPDF
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor
 
 # ── App setup ────────────────────────────────────────────────
 
 app = FastAPI(title="SYNAPSE", description="AI Research Assistant")
-templates = Jinja2Templates(directory="templates")
+
+# CORS — allow Vite dev server during development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "research_history.json")
 
@@ -25,6 +35,11 @@ HISTORY_FILE = os.path.join(os.path.dirname(__file__), "research_history.json")
 # ── Pydantic models ─────────────────────────────────────────
 
 class PDFRequest(BaseModel):
+    report: str
+    topic: str = "Research Report"
+
+
+class DocxRequest(BaseModel):
     report: str
     topic: str = "Research Report"
 
@@ -183,9 +198,20 @@ def markdown_to_pdf(report_text, topic="Research Report"):
 
 # ── Routes ───────────────────────────────────────────────────
 
+# ── Serve React build in production ──────────────────────────
+
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+async def index():
+    index_path = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(
+        content="<h1>SYNAPSE API</h1><p>Frontend not built. Run <code>npm run build</code> in frontend/.</p>"
+    )
 
 
 @app.get("/run")
@@ -217,6 +243,113 @@ async def run_pipeline(topic: str = ""):
     )
 
 
+def markdown_to_docx(report_text, topic="Research Report"):
+    """Convert markdown report text to a beautifully formatted Word (.docx) document."""
+    doc = Document()
+
+    for section in doc.sections:
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
+
+    # Document Header Title
+    title_p = doc.add_paragraph()
+    title_run = title_p.add_run(topic)
+    title_run.font.name = 'Calibri'
+    title_run.font.size = Pt(24)
+    title_run.font.bold = True
+    title_run.font.color.rgb = RGBColor(30, 41, 59)
+
+    # Subtitle Metadata
+    sub_p = doc.add_paragraph()
+    sub_run = sub_p.add_run(f"SYNAPSE Autonomous AI Research Report  |  Generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}")
+    sub_run.font.name = 'Calibri'
+    sub_run.font.size = Pt(9.5)
+    sub_run.font.italic = True
+    sub_run.font.color.rgb = RGBColor(100, 116, 139)
+
+    doc.add_paragraph().paragraph_format.space_after = Pt(8)
+
+    for line in report_text.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        if stripped.startswith("# "):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(16)
+            p.paragraph_format.space_after = Pt(6)
+            run = p.add_run(stripped[2:])
+            run.font.name = 'Calibri'
+            run.font.size = Pt(18)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(124, 108, 240)
+
+        elif stripped.startswith("## "):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(12)
+            p.paragraph_format.space_after = Pt(4)
+            run = p.add_run(stripped[3:])
+            run.font.name = 'Calibri'
+            run.font.size = Pt(14)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(30, 41, 59)
+
+        elif stripped.startswith("### "):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(8)
+            p.paragraph_format.space_after = Pt(2)
+            run = p.add_run(stripped[4:])
+            run.font.name = 'Calibri'
+            run.font.size = Pt(12)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(71, 85, 105)
+
+        elif stripped.startswith("- ") or stripped.startswith("* "):
+            p = doc.add_paragraph(style='List Bullet')
+            p.paragraph_format.space_after = Pt(3)
+            text = re.sub(r'\*\*(.*?)\*\*', r'\1', stripped[2:])
+            text = re.sub(r'\*(.*?)\*', r'\1', text)
+            run = p.add_run(text)
+            run.font.name = 'Calibri'
+            run.font.size = Pt(11)
+            run.font.color.rgb = RGBColor(51, 65, 85)
+
+        elif re.match(r'^\d+\.\s', stripped):
+            p = doc.add_paragraph(style='List Number')
+            p.paragraph_format.space_after = Pt(3)
+            text = re.sub(r'\*\*(.*?)\*\*', r'\1', stripped)
+            text = re.sub(r'\*(.*?)\*', r'\1', text)
+            clean_text = re.sub(r'^\d+\.\s*', '', text)
+            run = p.add_run(clean_text)
+            run.font.name = 'Calibri'
+            run.font.size = Pt(11)
+            run.font.color.rgb = RGBColor(51, 65, 85)
+
+        else:
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(6)
+            p.paragraph_format.line_spacing = 1.15
+            text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', stripped)
+
+            parts = re.split(r'(\*\*.*?\*\*)', text)
+            for part in parts:
+                if part.startswith('**') and part.endswith('**'):
+                    run = p.add_run(part[2:-2])
+                    run.font.bold = True
+                else:
+                    run = p.add_run(part)
+                run.font.name = 'Calibri'
+                run.font.size = Pt(11)
+                run.font.color.rgb = RGBColor(51, 65, 85)
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 @app.post("/download-pdf")
 async def download_pdf(data: PDFRequest):
     """Generate and return a PDF from the report text."""
@@ -233,6 +366,26 @@ async def download_pdf(data: PDFRequest):
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@app.post("/download-docx")
+async def download_docx(data: DocxRequest):
+    """Generate and return a Word (.docx) file from the report text."""
+    if not data.report:
+        return JSONResponse({"error": "No report provided"}, status_code=400)
+
+    docx_bytes = markdown_to_docx(data.report, data.topic)
+    buffer = io.BytesIO(docx_bytes)
+    buffer.seek(0)
+
+    safe_name = re.sub(r'[^\w\s-]', '', data.topic)[:50].strip().replace(' ', '_')
+    filename = f"synapse_{safe_name}.docx"
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
