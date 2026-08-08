@@ -20,16 +20,24 @@ from docx.shared import Inches, Pt, RGBColor
 
 app = FastAPI(title="SYNAPSE", description="AI Research Assistant")
 
-# CORS — allow Vite dev server during development
+# CORS — allow development server and deployed frontend domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "research_history.json")
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
+if os.path.exists(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+
+    @app.get("/")
+    async def serve_spa():
+        return HTMLResponse(open(os.path.join(FRONTEND_DIST, "index.html"), encoding="utf-8").read())
 
 
 # ── Pydantic models ─────────────────────────────────────────
