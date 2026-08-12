@@ -208,17 +208,37 @@ def markdown_to_pdf(report_text, topic="Research Report"):
 
 # ── Serve React build in production ──────────────────────────
 
-FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+# ── Serve React build in production ──────────────────────────
+
+FRONTEND_DIST = os.path.join(
+    os.path.dirname(__file__),
+    "frontend",
+    "dist"
+)
+
+if os.path.exists(FRONTEND_DIST):
+    app.mount(
+        "/assets",
+        StaticFiles(
+            directory=os.path.join(FRONTEND_DIST, "assets")
+        ),
+        name="assets"
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
     index_path = os.path.join(FRONTEND_DIST, "index.html")
+
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
+
     return HTMLResponse(
-        content="<h1>SYNAPSE API</h1><p>Frontend not built. Run <code>npm run build</code> in frontend/.</p>"
+        content="""
+        <h1>SYNAPSE API</h1>
+        <p>Frontend not built.</p>
+        """
     )
 
 
@@ -429,4 +449,4 @@ async def delete_history_entry(entry_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000)
