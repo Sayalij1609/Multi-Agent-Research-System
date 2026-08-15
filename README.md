@@ -66,6 +66,11 @@ Multi Agent AI Research System/
 ├── pipeline.py                # Synchronous & SSE streaming multi-agent execution pipeline
 ├── tools.py                   # Search & scraping tools (DuckDuckGo, BeautifulSoup)
 ├── requirements.txt           # Python dependencies
+├── Dockerfile                 # Multi-stage Docker build (Node.js + Python)
+├── .dockerignore              # Docker build context exclusions
+├── Procfile                   # Cloud platform process start command
+├── render.yaml                # Render Blueprint for deployment
+├── DOCKER.md                  # Full Docker deployment guide
 ├── README.md                  # Project documentation
 └── frontend/                  # React + Vite Single Page Application
     ├── index.html             # HTML entry point
@@ -193,6 +198,38 @@ In [`agents.py`](agents.py), you can configure the underlying LLM engine:
 | **Web Search** | DuckDuckGo (`ddgs`) |
 | **Web Scraping** | BeautifulSoup4, Requests |
 | **Document Export** | `python-docx` (Word), `fpdf2` (PDF) |
+
+---
+
+## 🐳 Docker Deployment
+
+SYNAPSE AI is fully containerized with a **multi-stage Docker build** — a Node.js stage builds the React frontend, and the final Python image serves everything from a single container.
+
+```bash
+# Build the image
+docker build -t synapse-ai .
+
+# Run the container
+docker run -d -p 8000:8000 -e GROQ_API_KEY=your_key_here synapse-ai
+```
+
+Open **[http://localhost:8000](http://localhost:8000)** — the FastAPI backend serves both the API and the React SPA.
+
+> 📖 For the full Docker guide (architecture diagrams, Docker Compose, environment variables, cloud deployment, and troubleshooting), see **[DOCKER.md](DOCKER.md)**.
+
+---
+
+## ☁️ Cloud Deployment
+
+SYNAPSE AI is production-ready for cloud platforms:
+
+| Platform | Method | Config File |
+|---|---|---|
+| **Render** | Auto-detects `Dockerfile` or uses Blueprint | [`render.yaml`](render.yaml) |
+| **Railway** | `railway init && railway up` | Auto-detected |
+| **Fly.io** | `fly launch && fly deploy` | Auto-detected |
+
+> See the full [Deployment Guide](DOCKER.md#deploying-to-cloud-platforms) for step-by-step instructions.
 
 ---
 
