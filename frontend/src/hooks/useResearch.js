@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { API_BASE } from '../api';
 
 const AGENTS = ['search', 'reader', 'writer', 'critic'];
 
@@ -66,7 +67,7 @@ export default function useResearch() {
     let report = '';
     let feedback = '';
 
-    const es = new EventSource(`/run?topic=${encodeURIComponent(topic)}`);
+    const es = new EventSource(`${API_BASE}/run?topic=${encodeURIComponent(topic)}`);
     esRef.current = es;
 
     es.onmessage = (e) => {
