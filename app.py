@@ -24,7 +24,7 @@ app = FastAPI(title="SYNAPSE", description="AI Research Assistant")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,6 +38,14 @@ if os.path.exists(FRONTEND_DIST):
     @app.get("/")
     async def serve_spa():
         return HTMLResponse(open(os.path.join(FRONTEND_DIST, "index.html"), encoding="utf-8").read())
+else:
+    @app.get("/")
+    async def root_status():
+        return {"status": "online", "service": "SYNAPSE AI Research Backend API", "version": "1.0.0"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 
 # ── Pydantic models ─────────────────────────────────────────
